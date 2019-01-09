@@ -1,5 +1,12 @@
+import math, time, random, gzip, csv
 import numpy as np
-import gzip
+import tensorflow as tf
+from tensorflow import keras
+from collections import deque
+
+np.random.seed(1)
+tf.set_random_seed(1)
+random.seed(1)
 
 def read_shr_uint8(filename, cols):
     arrs = []
@@ -39,27 +46,39 @@ def read_shr_uint16(filename, cols):
     arr.shape = (len(arr) // cols, cols)
     return arr
 
+def read_shr_categories(filename):
+    d = {}
+    with open(filename, 'r') as f:
+      reader = csv.reader(f)
+      for k, v in reader: d[k] = v
+    return d
 
-arr = read_shr_uint16('Data/teamcomp.duration.shr.gz', 1)
-print(arr.shape)
-print(arr[0:10,:])
+print("Loading match data...")
+champLabels = read_shr_categories('Data/teamcomp.plr.champ.classes.csv')
+champCount = len(champLabels)
+timestamps = read_shr_uint16('Data/teamcomp.timestamp.shr.gz', 1)
+champs = read_shr_uint8('Data/teamcomp.plr.champ.shr.gz', 10) # 5 winners, followed by 5 losers
+print("Loaded {:,} matches".format(timestamps.shape[0]))
 
-arr = read_shr_uint16('Data/teamcomp.timestamp.shr.gz', 1)
-print(arr.shape)
-print(arr[0:10,:])
+def construct_batch(first, count):
+    # main batch
+    last = first + count
+    inputs = np.zeros((count*2, champCount*2 + 1))
+    outputs = np.ones((count*2, 1)) # Did first team win
+    for ch in range(5):
+        inputs[range(count), champs[first:last, ch]] = 1
+    for ch in range(5):
+        inputs[range(count), champCount + champs[first:last, 5+ch]] = 1
+    inputs[:count, -1] = timestamps[first:last, 0]
 
-arr = read_shr_uint8('Data/teamcomp.queue.shr.gz', 1)
-print(arr.shape)
-print(arr[0:10,:])
+    # mirrored
+    inputs[count:, :champCount] = inputs[:count, champCount:(2*champCount)]
+    inputs[count:, champCount:(2*champCount)] = inputs[:count, :champCount]
+    inputs[count:, -1] = inputs[:count, -1]
+    outputs[count:, 0] = 0
 
-arr = read_shr_uint8('Data/teamcomp.plr.champ.shr.gz', 10)
-print(arr.shape)
-print(arr[0:10,:])
+    return inputs, outputs
 
-arr = read_shr_uint8('Data/teamcomp.plr.spell.shr.gz', 20)
-print(arr.shape)
-print(arr[0:10,:])
-
-arr = read_shr_uint8('Data/teamcomp.plr.rank.shr.gz', 10)
-print(arr.shape)
-print(arr[0:10,:])
+test, outputs = construct_batch(0, 10)
+np.savetxt("dump.csv", test, delimiter=",")
+print(outputs)
