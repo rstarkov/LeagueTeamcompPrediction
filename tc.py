@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 from collections import deque
 
+
 np.random.seed(1)
 tf.set_random_seed(1)
 random.seed(1)
@@ -55,14 +56,6 @@ def read_shr_uint16(filename, cols):
     return arr
 
 
-def read_shr_categories(filename):
-    d = {}
-    with open(filename, 'r') as f:
-      reader = csv.reader(f)
-      for k, v in reader: d[k] = v
-    return d
-
-
 def read_categories(filename):
     with open(filename, 'r') as f:
         return np.array([line.strip() for line in f])
@@ -77,7 +70,7 @@ def construct_chunk(first, count):
     for ch in range(5):
         inputs[range(count), champs[first:last, ch]] = 1
     for ch in range(5):
-        inputs[range(count), champ_count + champs[first:last, 5+ch]] = 1
+        inputs[range(count), champ_count + champs[first:last, 5+ch].astype(np.int32)] = 1
     inputs[:count, -1] = timestamps[first:last, 0]
 
     # mirrored
@@ -92,7 +85,18 @@ def construct_chunk(first, count):
     outputs[2*count:, 0] = 0.5
 
     log("Chunk constructed")
+    verify_chunk(inputs)
     return inputs, outputs
+
+
+def verify_chunk(chunk):
+    log("Verifying chunk...")
+    for r in range(chunk.shape[0]):
+        if len(np.nonzero(chunk[r, :champ_count])[0]) != 5:
+            raise ValueError('Champion count in team 1 is not 5')
+        if len(np.nonzero(chunk[r, champ_count:2*champ_count])[0]) != 5:
+            raise ValueError('Champion count in team 2 is not 5')
+    log("Chunk verified")
 
 
 def validate(model):
@@ -111,9 +115,8 @@ def validate(model):
             sum += bins[bin, 0] * ((bin + 0.5 - actual_wr) ** 2)
             log('Bin %d%%: actual w/r = %2.1f' % (bin, actual_wr))
     log('Validation MSE %%: %.4f' % (sum / total))
-    for r in range(10):
-        ch1 = champ_labels[np.nonzero(val_inputs)[0:5]]
-        ch2 = champ_labels[np.nonzero(val_inputs)[5:10]]
+    #for r in range(10):
+    #    print([champ_labels[np.nonzero(val_inputs[r, :])[0][0:5]], champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]], predicted[r]])
 
 
 logfile = open('log.txt', 'a')
