@@ -65,8 +65,8 @@ def construct_chunk(first, count):
     log("Constructing chunk...")
     # main chunk
     last = first + count
-    inputs = np.zeros((count*3, champ_count*2 + 1))
-    outputs = np.ones((count*3, 1)) # Did first team win
+    inputs = np.zeros((count*3, champ_count*2 + 1), dtype=np.float64)
+    outputs = np.ones((count*3, 1), dtype=np.float64) # Did first team win
     for ch in range(5):
         inputs[range(count), champs[first:last, ch]] = 1
     for ch in range(5):
