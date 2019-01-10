@@ -133,19 +133,15 @@ timestamps = timestamps[shuf]
 champs = champs[shuf]
 log("Loaded {:,} matches".format(match_count))
 
-chunk_size = 1000000 # 1 million size = 3 million training samples = 7 GB of RAM
+chunk_size = 100000 # 1 million size = 3 million training samples = 7 GB of RAM
 validation_size = 100000
 val_inputs, val_outputs = construct_chunk(0, validation_size)
 
 model = keras.Sequential()
-model.add(keras.layers.Dense(256, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
+model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
 model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-model.add(keras.layers.Dense(64, activation=tf.nn.elu))
-model.add(keras.layers.Dense(64, activation=tf.nn.elu))
-model.add(keras.layers.Dense(32, activation=tf.nn.elu))
-model.add(keras.layers.Dense(32, activation=tf.nn.elu))
-model.add(keras.layers.Dense(32, activation=tf.nn.elu))
-model.add(keras.layers.Dense(32, activation=tf.nn.elu))
+model.add(keras.layers.Dense(128, activation=tf.nn.elu))
+model.add(keras.layers.Dense(128, activation=tf.nn.elu))
 model.add(keras.layers.Dense(1))
 
 model.summary()
@@ -158,7 +154,7 @@ chunks = (match_count-validation_size) // chunk_size
 chunk_size = match_count // chunks
 log('Using chunk size {:,}'.format(chunk_size))
 while True:
-    model.compile(loss = 'mse', optimizer = keras.optimizers.RMSprop(learn_rate), metrics = ['mse', 'mae'])
+    model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(learn_rate), metrics = ['mse', 'mae'])
     for c in range(chunks):
         log("Training on chunk %d of %d" % (c+1, chunks))
         inputs, outputs = construct_chunk(validation_size+c*chunk_size, chunk_size)
