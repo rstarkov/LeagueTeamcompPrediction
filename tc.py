@@ -101,22 +101,22 @@ def verify_chunk(chunk):
 
 def validate(model):
     predicted = model.predict(val_inputs)
-    bins = np.zeros((100, 2))
+    bins = np.zeros((101, 2))
     for r in range(validation_size*2): # the rest are mirror matchups with an expected output of 0.5
-        bin = int(predicted[r]*100)
+        bin = max(0, min(100, int(predicted[r]*100 + 0.5)))
         bins[bin, 0] += 1
         bins[bin, 1] += val_outputs[r, 0]
     sum = 0
     total = 0
-    for bin in range(100):
+    for bin in range(101):
         if bins[bin, 0] > 0:
             actual_wr = bins[bin, 1] / bins[bin, 0] * 100
             total += bins[bin, 0]
-            sum += bins[bin, 0] * ((bin + 0.5 - actual_wr) ** 2)
-            log('Bin %d%%: actual w/r = %2.1f' % (bin, actual_wr))
+            sum += bins[bin, 0] * ((bin - actual_wr) ** 2)
+            log('Bin %d%% (+/- 0.5%%): actual w/r = %2.1f' % (bin, actual_wr))
     log('Validation MSE %%: %.4f' % (sum / total))
-    #for r in range(10):
-    #    print([champ_labels[np.nonzero(val_inputs[r, :])[0][0:5]], champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]], predicted[r]])
+    for r in range(10):
+        log([champ_labels[np.nonzero(val_inputs[r, :])[0][0:5]], champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]], predicted[r]])
 
 
 logfile = open('log.txt', 'a')
