@@ -102,7 +102,7 @@ def verify_chunk(chunk):
 def validate(model):
     predicted = model.predict(val_inputs)
     bins = np.zeros((101, 2))
-    for r in range(validation_size*2): # the rest are mirror matchups with an expected output of 0.5
+    for r in range(val_inputs.shape[0]):
         bin = max(0, min(100, int(predicted[r]*100 + 0.5)))
         bins[bin, 0] += 1
         bins[bin, 1] += val_outputs[r, 0]
@@ -141,6 +141,8 @@ log("Loaded {:,} matches".format(match_count))
 chunk_size = 100000 # 1 million size = 3 million training samples = 7 GB of RAM
 validation_size = 100000
 val_inputs, val_outputs = construct_chunk(0, validation_size)
+val_inputs = val_inputs[:2*validation_size, :]
+val_outputs = val_outputs[:2*validation_size, :]
 
 model = keras.Sequential()
 model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
