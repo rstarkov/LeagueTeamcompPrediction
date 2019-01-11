@@ -1,4 +1,4 @@
-import math, time, random, gzip, csv
+import math, time, random, gzip, csv, tabulate
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -11,7 +11,7 @@ random.seed(1)
 
 
 def log(val):
-    print("LOG:", val)
+    print(val)
     print(val, file=logfile)
     logfile.flush()
 
@@ -113,10 +113,15 @@ def validate(model):
             actual_wr = bins[bin, 1] / bins[bin, 0] * 100
             total += bins[bin, 0]
             sum += bins[bin, 0] * ((bin - actual_wr) ** 2)
-            log('Bin %d%% (+/- 0.5%%): actual w/r = %2.1f' % (bin, actual_wr))
+            log('Bin %d%% (+/- 0.5%%): actual w/r = %2.1f (%s games)' % (bin, actual_wr, '{:,}'.format(int(bins[bin, 0]))))
     log('Validation MSE %%: %.4f' % (sum / total))
+    tbl = []
     for r in range(10):
-        log([champ_labels[np.nonzero(val_inputs[r, :])[0][0:5]], champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]], predicted[r]])
+        tbl.append([
+            ', '.join(champ_labels[np.nonzero(val_inputs[r, :])[0][0:5]]),
+            ', '.join(champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]]),
+            predicted[r]])
+    log(tabulate.tabulate(tbl, headers=['Team 1', 'Team 2', 'P(Team 1 Win)'], tablefmt='orgtbl'))
 
 
 logfile = open('log.txt', 'a')
