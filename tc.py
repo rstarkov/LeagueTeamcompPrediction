@@ -157,8 +157,8 @@ learn_rate = 0.0001
 
 start_time = time.time()
 epoch = 1
-chunks = (match_count-validation_size) // chunk_size
-chunk_size = match_count // chunks
+chunks = (match_count - validation_size) // chunk_size
+chunk_size = (match_count - validation_size) // chunks
 log('Using chunk size {:,}'.format(chunk_size))
 while True:
     model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(learn_rate), metrics = ['mse', 'mae'])
