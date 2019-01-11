@@ -28,7 +28,7 @@ def read_shr_uint8(filename, cols):
                 break
             block_id = int.from_bytes(f.read(4), byteorder='little')
             if block_id - 0x76543210 != blocks:
-                raise ValueError('Invalid block number: %d' % block_id)
+                raise ValueError(f'Invalid block number: {block_id}')
             blocks = blocks + 1
 
     arr = np.concatenate(arrs)
@@ -48,7 +48,7 @@ def read_shr_uint16(filename, cols):
                 break
             block_id = int.from_bytes(f.read(4), byteorder='little')
             if block_id - 0x76543210 != blocks:
-                raise ValueError('Invalid block number: %d' % block_id)
+                raise ValueError(f'Invalid block number: {block_id}')
             blocks = blocks + 1
 
     arr = np.concatenate(arrs)
@@ -93,9 +93,9 @@ def verify_chunk(chunk):
     log("Verifying chunk...")
     for r in range(chunk.shape[0]):
         if len(np.nonzero(chunk[r, :champ_count])[0]) != 5:
-            raise ValueError('Champion count in team 1 is not 5')
+            raise ValueError(f'Champion count in team 1 is not 5 (row {r})')
         if len(np.nonzero(chunk[r, champ_count:2*champ_count])[0]) != 5:
-            raise ValueError('Champion count in team 2 is not 5')
+            raise ValueError(f'Champion count in team 2 is not 5 (row {r})')
     log("Chunk verified")
 
 
@@ -113,8 +113,8 @@ def validate(model):
             actual_wr = bins[bin, 1] / bins[bin, 0] * 100
             total += bins[bin, 0]
             sum += bins[bin, 0] * ((bin - actual_wr) ** 2)
-            log('Bin %d%% (+/- 0.5%%): actual w/r = %2.1f (%s games)' % (bin, actual_wr, '{:,}'.format(int(bins[bin, 0]))))
-    log('Validation MSE %%: %.4f' % (sum / total))
+            log(f'Bin {bin}% (+/- 0.5%): actual w/r = {actual_wr:2.1f} ({int(bins[bin, 0]):,} games)')
+    log(f'Validation MSE %: {sum / total:.4f}')
     tbl = []
     for r in range(10):
         tbl.append([
@@ -136,7 +136,7 @@ match_count = timestamps.shape[0]
 shuf = np.random.permutation(match_count)
 timestamps = timestamps[shuf]
 champs = champs[shuf]
-log("Loaded {:,} matches".format(match_count))
+log(f"Loaded {match_count:,} matches")
 
 chunk_size = 100000 # 1 million size = 3 million training samples = 7 GB of RAM
 validation_size = 100000
@@ -160,11 +160,11 @@ epoch = 1
 #match_count = chunk_size + validation_size  # to make it repeatedly train on the same chunk
 chunks = (match_count - validation_size) // chunk_size
 chunk_size = (match_count - validation_size) // chunks
-log('Using chunk size {:,}'.format(chunk_size))
+log(f'Using chunk size {chunk_size:,}')
 while True:
     model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(learn_rate), metrics = ['mse', 'mae'])
     for c in range(chunks):
-        log("Training on chunk %d of %d" % (c+1, chunks))
+        log(f"Training on chunk {c+1} of {chunks}")
         inputs, outputs = construct_chunk(validation_size+c*chunk_size, chunk_size)
         #inputs, outputs = val_inputs, val_outputs  # to make it train on the validation set
         if epoch == 1 and c == 0:
