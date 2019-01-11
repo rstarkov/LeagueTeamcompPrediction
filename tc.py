@@ -153,7 +153,7 @@ model.add(keras.layers.Dense(1))
 
 model.summary()
 
-learn_rate = 0.0001
+learn_rate = 0.00001
 
 start_time = time.time()
 epoch = 1
@@ -167,10 +167,16 @@ while True:
         log("Training on chunk %d of %d" % (c+1, chunks))
         inputs, outputs = construct_chunk(validation_size+c*chunk_size, chunk_size)
         #inputs, outputs = val_inputs, val_outputs  # to make it train on the validation set
-        hist = model.fit(inputs, outputs, epochs=1, batch_size=32, shuffle=True)
+        if epoch == 1 and c == 0:
+            epochs = 10
+        elif epoch == 1 and c == 1:
+            epochs = 5
+        else:
+            epochs = 2
+        hist = model.fit(inputs, outputs, epochs=epochs, batch_size=32, shuffle=True)
         log(abs(hist.history["loss"][-1] - 0.25))
         model.save('models/tc-%04d-%03d.h5' % (epoch, c+1))
         validate(model)
 
     epoch = epoch + 1
-    learn_rate = 0.8 * learn_rate
+    learn_rate = 0.1 * learn_rate
