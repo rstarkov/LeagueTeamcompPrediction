@@ -157,6 +157,7 @@ learn_rate = 0.0001
 
 start_time = time.time()
 epoch = 1
+#match_count = chunk_size + validation_size  # to make it repeatedly train on the same chunk
 chunks = (match_count - validation_size) // chunk_size
 chunk_size = (match_count - validation_size) // chunks
 log('Using chunk size {:,}'.format(chunk_size))
@@ -165,6 +166,7 @@ while True:
     for c in range(chunks):
         log("Training on chunk %d of %d" % (c+1, chunks))
         inputs, outputs = construct_chunk(validation_size+c*chunk_size, chunk_size)
+        #inputs, outputs = val_inputs, val_outputs  # to make it train on the validation set
         hist = model.fit(inputs, outputs, epochs=1, batch_size=32, shuffle=True)
         log(abs(hist.history["loss"][-1] - 0.25))
         model.save('models/tc-%04d-%03d.h5' % (epoch, c+1))
