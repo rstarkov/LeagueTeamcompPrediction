@@ -5,9 +5,22 @@ from tensorflow import keras
 from collections import deque
 
 
-np.random.seed(1)
-tf.set_random_seed(1)
-random.seed(1)
+class TrainingState:
+    chunk_size = 100_000 # 1 million size = 3 million training samples = 7 GB of RAM
+    validation_size = 100_000
+    batch_size = 32
+    floatx = 'float32'
+    random_seed = 1
+    learn_rate = 0.00001
+    cur_epoch = 1
+    cur_chunk = 1
+
+state = TrainingState()
+
+keras.backend.set_floatx(state.floatx)
+np.random.seed(state.random_seed)
+tf.set_random_seed(state.random_seed)
+random.seed(state.random_seed)
 
 
 def log(val):
@@ -138,11 +151,9 @@ timestamps = timestamps[shuf]
 champs = champs[shuf]
 log(f"Loaded {match_count:,} matches")
 
-chunk_size = 100000 # 1 million size = 3 million training samples = 7 GB of RAM
-validation_size = 100000
-val_inputs, val_outputs = construct_chunk(0, validation_size)
-val_inputs = val_inputs[:2*validation_size, :]
-val_outputs = val_outputs[:2*validation_size, :]
+val_inputs, val_outputs = construct_chunk(0, state.validation_size)
+val_inputs = val_inputs[:2*state.validation_size, :]
+val_outputs = val_outputs[:2*state.validation_size, :]
 
 model = keras.Sequential()
 model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
@@ -153,30 +164,31 @@ model.add(keras.layers.Dense(1))
 
 model.summary()
 
-learn_rate = 0.00001
-
 start_time = time.time()
-epoch = 1
-#match_count = chunk_size + validation_size  # to make it repeatedly train on the same chunk
-chunks = (match_count - validation_size) // chunk_size
-chunk_size = (match_count - validation_size) // chunks
-log(f'Using chunk size {chunk_size:,}')
+chunk_count = (match_count - state.validation_size) // state.chunk_size
+state.chunk_size = (match_count - state.validation_size) // chunk_count
+compiled_learn_rate = -1
+log(f'Using chunk size {state.chunk_size:,}')
 while True:
-    model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(learn_rate), metrics = ['mse', 'mae'])
-    for c in range(chunks):
-        log(f"Training on chunk {c+1} of {chunks}")
-        inputs, outputs = construct_chunk(validation_size+c*chunk_size, chunk_size)
-        #inputs, outputs = val_inputs, val_outputs  # to make it train on the validation set
-        if epoch == 1 and c == 0:
-            epochs = 10
-        elif epoch == 1 and c == 1:
-            epochs = 5
-        else:
-            epochs = 2
-        hist = model.fit(inputs, outputs, epochs=epochs, batch_size=32, shuffle=True)
-        log(abs(hist.history["loss"][-1] - 0.25))
-        model.save('models/tc-%04d-%03d.h5' % (epoch, c+1))
-        validate(model)
+    if state.learn_rate != compiled_learn_rate:
+        model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(state.learn_rate), metrics = ['mse', 'mae'])
+        compiled_learn_rate = state.learn_rate
 
-    epoch = epoch + 1
-    learn_rate = 0.1 * learn_rate
+    log(f"Training on chunk {state.cur_chunk} of {chunk_count}")
+    inputs, outputs = construct_chunk(state.validation_size + (state.cur_chunk-1)*state.chunk_size, state.chunk_size)
+    if state.cur_epoch == 1 and state.cur_chunk == 1:
+        epochs = 10
+    elif state.cur_epoch == 1 and state.cur_chunk == 2:
+        epochs = 5
+    else:
+        epochs = 2
+    hist = model.fit(inputs, outputs, epochs=epochs, batch_size=state.batch_size, shuffle=True)
+    log(abs(hist.history["loss"][-1] - 0.25))
+    model.save('models/tc-%04d-%03d.h5' % (state.cur_epoch, state.cur_chunk))
+    validate(model)
+
+    state.cur_chunk += 1
+    if state.cur_chunk > chunk_count:
+        state.cur_chunk = 0
+        state.cur_epoch += 1
+        state.learn_rate *= 0.1
