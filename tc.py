@@ -116,10 +116,20 @@ def verify_chunk(chunk):
 def validate(model):
     predicted = model.predict(val_inputs)
     bins = np.zeros((101, 2))
+    stat_count = 0
+    stat_mean = 0
+    stat_m2 = 0
     for r in range(val_inputs.shape[0]):
         bin = max(0, min(100, int(predicted[r]*100 + 0.5)))
         bins[bin, 0] += 1
         bins[bin, 1] += val_outputs[r, 0]
+        stat_count += 1
+        delta = predicted[r]*100 - stat_mean
+        stat_mean += delta / stat_count
+        delta2 = predicted[r]*100 - stat_mean
+        stat_m2 += delta * delta2
+    stdev = math.sqrt(stat_m2 / stat_count)
+
     sum = 0
     total = 0
     for bin in range(101):
@@ -128,7 +138,10 @@ def validate(model):
             total += bins[bin, 0]
             sum += bins[bin, 0] * ((bin - actual_wr) ** 2)
             log(f'Bin {bin}% (+/- 0.5%): actual w/r = {actual_wr:2.1f} ({int(bins[bin, 0]):,} games)')
-    log(f'Validation MSE %: {sum / total:.4f}')
+    mse = sum / total
+
+    log(f'Validation MSE %: {mse:.4f}, stdev: {stdev:.4f}')
+
     tbl = []
     for r in range(10):
         tbl.append([
@@ -136,6 +149,8 @@ def validate(model):
             ', '.join(champ_labels[np.nonzero(val_inputs[r, champ_count:])[0][0:5]]),
             predicted[r]])
     log(tabulate.tabulate(tbl, headers=['Team 1', 'Team 2', 'P(Team 1 Win)'], tablefmt='orgtbl'))
+
+    return (mse, stdev)
 
 
 def get_checkpoint_path(epoch, chunk):
