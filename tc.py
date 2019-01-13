@@ -158,6 +158,7 @@ def validate(model):
 
 def revalidate_old(epoch, chunk, end_epoch, end_chunk):
     while True:
+        start = time.time()
         print("Loading model...")
         model = keras.models.load_model(get_checkpoint_path(epoch, chunk))
         (val_mse, val_stdev) = validate(model)
@@ -169,6 +170,9 @@ def revalidate_old(epoch, chunk, end_epoch, end_chunk):
             epoch += 1
         if epoch == end_epoch and chunk == end_chunk:
             exit()
+        del model
+        keras.backend.clear_session()
+        print (time.time() - start)
 
 
 def get_checkpoint_path(epoch, chunk):
