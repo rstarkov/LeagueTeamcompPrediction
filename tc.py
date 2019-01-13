@@ -77,7 +77,7 @@ def read_categories(filename):
 
 
 def construct_chunk(first, count):
-    log("Constructing chunk...")
+    print("Constructing chunk...")
     # main chunk
     last = first + count
     inputs = np.zeros((count*3, champ_count*2 + 1), dtype=np.float64)
@@ -99,23 +99,25 @@ def construct_chunk(first, count):
     inputs[2*count:, champ_count:2*champ_count] = inputs[2*count:, :champ_count]
     outputs[2*count:, 0] = 0.5
 
-    log("Chunk constructed")
+    print("Chunk constructed")
     verify_chunk(inputs)
     return inputs, outputs
 
 
 def verify_chunk(chunk):
-    log("Verifying chunk...")
+    print("Verifying chunk...")
     for r in range(chunk.shape[0]):
         if len(np.nonzero(chunk[r, :champ_count])[0]) != 5:
             raise ValueError(f'Champion count in team 1 is not 5 (row {r})')
         if len(np.nonzero(chunk[r, champ_count:2*champ_count])[0]) != 5:
             raise ValueError(f'Champion count in team 2 is not 5 (row {r})')
-    log("Chunk verified")
+    print("Chunk verified")
 
 
 def validate(model):
+    print("Validate: predicting...")
     predicted = model.predict(val_inputs)
+    print("Validate: computing stats...")
     bins = np.zeros((101, 2))
     stat_count = 0
     stat_mean = 0
@@ -228,6 +230,7 @@ else:
     if last_chunk < 1:
         last_epoch -= 1
         last_chunk = chunk_count
+    print("Loading model...")
     model = keras.models.load_model(get_checkpoint_path(last_epoch, last_chunk))
 
 model.summary()
@@ -236,6 +239,7 @@ start_time = time.time()
 compiled_learn_rate = -1
 while True:
     if state.learn_rate != compiled_learn_rate:
+        print("Compiling model...")
         model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(state.learn_rate), metrics = ['mse', 'mae'])
         compiled_learn_rate = state.learn_rate
 
@@ -248,6 +252,7 @@ while True:
     else:
         epochs = 2
     hist = model.fit(inputs, outputs, epochs=epochs, batch_size=state.batch_size, shuffle=True)
+    print("Saving model...")
     model.save(get_checkpoint_path(state.cur_epoch, state.cur_chunk))
     (val_mse, val_stdev) = validate(model)
 
