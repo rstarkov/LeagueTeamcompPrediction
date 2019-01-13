@@ -2,7 +2,6 @@ import math, time, random, gzip, csv, tabulate, json, os
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from collections import deque
 
 
 save_path = 'models/test'  # currently meant to be modified in code
@@ -221,13 +220,13 @@ val_outputs = val_outputs[:2*state.validation_size, :]
 #revalidate_old(1, 119, 5, 237)
 
 if state.cur_epoch == 1 and state.cur_chunk == 1:
-    # todo: load from save_path
-    model = keras.Sequential()
-    model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
-    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-    model.add(keras.layers.Dense(1))
+    with open(f'{save_path}/model.py', 'r') as f:
+        l = locals().copy()
+        g = globals().copy()
+        exec(f.read(), l, g)
+        if not 'build_model' in g:
+            raise ValueError('model.py should def a function named build_model accepting an input_shape')
+        model = g['build_model'](val_inputs[0].shape)
 else:
     last_epoch = state.cur_epoch
     last_chunk = state.cur_chunk - 1
