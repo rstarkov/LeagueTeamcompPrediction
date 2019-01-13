@@ -1,4 +1,4 @@
-import math, time, random, gzip, csv, tabulate
+import math, time, random, gzip, csv, tabulate, json
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -6,16 +6,22 @@ from collections import deque
 
 
 class TrainingState:
-    chunk_size = 100_000 # 1 million size = 3 million training samples = 7 GB of RAM
-    validation_size = 100_000
-    batch_size = 32
-    floatx = 'float32'
-    random_seed = 1
-    learn_rate = 0.00001
-    cur_epoch = 1
-    cur_chunk = 1
+    def __init__(self, js):
+        self.chunk_size = 100_000 # 1 million size = 3 million training samples = 7 GB of RAM
+        self.validation_size = 100_000
+        self.batch_size = 32
+        self.floatx = 'float32'
+        self.random_seed = 1
+        self.learn_rate = 0.00001
+        self.cur_epoch = 1
+        self.cur_chunk = 1
+        if js is not None:
+            self.__dict__ = {**self.__dict__, **json.loads(js)}
 
-state = TrainingState()
+    def to_json(self):
+        return json.dumps(self.__dict__, indent=4)
+
+state = TrainingState(None)
 
 keras.backend.set_floatx(state.floatx)
 np.random.seed(state.random_seed)
@@ -192,3 +198,6 @@ while True:
         state.cur_chunk = 0
         state.cur_epoch += 1
         state.learn_rate *= 0.1
+
+    with open('state.json', 'w') as f:
+        print(state.to_json(), file=f)
