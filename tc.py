@@ -265,7 +265,7 @@ while True:
 
     state.cur_chunk += 1
     if state.cur_chunk > chunk_count:
-        state.cur_chunk = 0
+        state.cur_chunk = 1
         state.cur_epoch += 1
         state.learn_rate *= 0.1
 
