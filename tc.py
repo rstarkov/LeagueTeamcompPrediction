@@ -173,6 +173,10 @@ timestamps = timestamps[shuf]
 champs = champs[shuf]
 log(f"Loaded {match_count:,} matches")
 
+chunk_count = (match_count - state.validation_size) // state.chunk_size
+state.chunk_size = (match_count - state.validation_size) // chunk_count
+log(f'Using chunk size {state.chunk_size:,}')
+
 val_inputs, val_outputs = construct_chunk(0, state.validation_size)
 val_inputs = val_inputs[:2*state.validation_size, :]
 val_outputs = val_outputs[:2*state.validation_size, :]
@@ -186,15 +190,17 @@ if state.cur_epoch == 1 and state.cur_chunk == 1:
     model.add(keras.layers.Dense(128, activation=tf.nn.elu))
     model.add(keras.layers.Dense(1))
 else:
-    model = keras.models.load_model(get_checkpoint_path(state.cur_epoch, state.cur_chunk))
+    last_epoch = state.cur_epoch
+    last_chunk = state.cur_chunk - 1
+    if last_chunk < 1:
+        last_epoch -= 1
+        last_chunk = chunk_count
+    model = keras.models.load_model(get_checkpoint_path(last_epoch, last_chunk))
 
 model.summary()
 
 start_time = time.time()
-chunk_count = (match_count - state.validation_size) // state.chunk_size
-state.chunk_size = (match_count - state.validation_size) // chunk_count
 compiled_learn_rate = -1
-log(f'Using chunk size {state.chunk_size:,}')
 while True:
     if state.learn_rate != compiled_learn_rate:
         model.compile(loss = 'mse', optimizer = keras.optimizers.Adam(state.learn_rate), metrics = ['mse', 'mae'])
