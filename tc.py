@@ -18,6 +18,7 @@ class TrainingState:
         self.learn_rate = 0.00001
         self.cur_epoch = 1
         self.cur_chunk = 1
+        self.total_time_sec = 0
         if js is not None:
             self.__dict__ = {**self.__dict__, **json.loads(js)}
 
@@ -230,9 +231,15 @@ while True:
     else:
         epochs = 2
     hist = model.fit(inputs, outputs, epochs=epochs, batch_size=state.batch_size, shuffle=True)
-    log(abs(hist.history["loss"][-1] - 0.25))
     model.save(get_checkpoint_path(state.cur_epoch, state.cur_chunk))
-    validate(model)
+    (val_mse, val_stdev) = validate(model)
+
+    t = time.time()
+    state.total_time_sec += t - start_time
+    start_time = t
+
+    with open(f'{save_path}/progress.csv', 'a') as f:
+        print(f"{state.total_time_sec:.1f},,{state.cur_epoch},{state.cur_chunk},,{hist.history['loss'][-1]},,{val_mse},{val_stdev}", file=f)
 
     state.cur_chunk += 1
     if state.cur_chunk > chunk_count:
