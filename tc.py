@@ -154,6 +154,21 @@ def validate(model):
     return (mse, stdev)
 
 
+def revalidate_old(epoch, chunk, end_epoch, end_chunk):
+    while True:
+        print("Loading model...")
+        model = keras.models.load_model(get_checkpoint_path(epoch, chunk))
+        (val_mse, val_stdev) = validate(model)
+        with open(f'{save_path}/progress_old.csv', 'a') as f:
+            print(f"-1,,{epoch},{chunk},,-1,,{val_mse},{val_stdev}", file=f)
+        chunk += 1
+        if chunk > chunk_count:
+            chunk = 0
+            epoch += 1
+        if epoch == end_epoch and chunk == end_chunk:
+            exit()
+
+
 def get_checkpoint_path(epoch, chunk):
     return f'{save_path}/checkpoints/tc-{epoch:04d}-{chunk:03d}.h5'
 
@@ -196,6 +211,8 @@ log(f'Using chunk size {state.chunk_size:,}')
 val_inputs, val_outputs = construct_chunk(0, state.validation_size)
 val_inputs = val_inputs[:2*state.validation_size, :]
 val_outputs = val_outputs[:2*state.validation_size, :]
+
+#revalidate_old(1, 119, 5, 237)
 
 if state.cur_epoch == 1 and state.cur_chunk == 1:
     # todo: load from save_path
