@@ -165,7 +165,7 @@ def revalidate_old(epoch, chunk, end_epoch, end_chunk):
             print(f"-1,,{epoch},{chunk},,-1,,{val_mse},{val_stdev}", file=f)
         chunk += 1
         if chunk > chunk_count:
-            chunk = 0
+            chunk = 1
             epoch += 1
         if epoch == end_epoch and chunk == end_chunk:
             exit()
