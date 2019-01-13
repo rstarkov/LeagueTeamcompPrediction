@@ -1,8 +1,11 @@
-import math, time, random, gzip, csv, tabulate, json
+import math, time, random, gzip, csv, tabulate, json, os
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from collections import deque
+
+
+save_path = 'models/test'  # currently meant to be modified in code
 
 
 class TrainingState:
@@ -20,14 +23,6 @@ class TrainingState:
 
     def to_json(self):
         return json.dumps(self.__dict__, indent=4)
-
-state = TrainingState(None)
-
-keras.backend.set_floatx(state.floatx)
-np.random.seed(state.random_seed)
-tf.set_random_seed(state.random_seed)
-random.seed(state.random_seed)
-
 
 def log(val):
     print(val)
@@ -143,8 +138,29 @@ def validate(model):
     log(tabulate.tabulate(tbl, headers=['Team 1', 'Team 2', 'P(Team 1 Win)'], tablefmt='orgtbl'))
 
 
-logfile = open('log.txt', 'a')
+def get_checkpoint_path(epoch, chunk):
+    return f'{save_path}/checkpoints/tc-{epoch:04d}-{chunk:03d}.h5'
+
+
+state_file_path = f'{save_path}/state.json'
+if not os.path.isfile(state_file_path):
+    state = TrainingState(None)
+    os.mkdir(save_path)
+    print(f'Initialised a blank state; please edit {state_file_path} and restart')
+    exit()
+
+with open(f'{save_path}/state.json', 'r') as f:
+    state = TrainingState(f.read())
+
+logfile = open(f'{save_path}/log.txt', 'a')
 log("==============================")
+log("Loaded state:")
+log(state.to_json())
+
+keras.backend.set_floatx(state.floatx)
+np.random.seed(state.random_seed)
+tf.set_random_seed(state.random_seed)
+random.seed(state.random_seed)
 
 log("Loading match data...")
 champ_labels = read_categories('data/teamcomp.plr.champ.classes.csv')
@@ -161,12 +177,16 @@ val_inputs, val_outputs = construct_chunk(0, state.validation_size)
 val_inputs = val_inputs[:2*state.validation_size, :]
 val_outputs = val_outputs[:2*state.validation_size, :]
 
-model = keras.Sequential()
-model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
-model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-model.add(keras.layers.Dense(128, activation=tf.nn.elu))
-model.add(keras.layers.Dense(1))
+if state.cur_epoch == 1 and state.cur_chunk == 1:
+    # todo: load from save_path
+    model = keras.Sequential()
+    model.add(keras.layers.Dense(128, activation=tf.nn.elu, input_shape=(val_inputs.shape[1],)))
+    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
+    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
+    model.add(keras.layers.Dense(128, activation=tf.nn.elu))
+    model.add(keras.layers.Dense(1))
+else:
+    model = keras.models.load_model(get_checkpoint_path(state.cur_epoch, state.cur_chunk))
 
 model.summary()
 
@@ -190,7 +210,7 @@ while True:
         epochs = 2
     hist = model.fit(inputs, outputs, epochs=epochs, batch_size=state.batch_size, shuffle=True)
     log(abs(hist.history["loss"][-1] - 0.25))
-    model.save('models/tc-%04d-%03d.h5' % (state.cur_epoch, state.cur_chunk))
+    model.save(get_checkpoint_path(state.cur_epoch, state.cur_chunk))
     validate(model)
 
     state.cur_chunk += 1
@@ -199,5 +219,5 @@ while True:
         state.cur_epoch += 1
         state.learn_rate *= 0.1
 
-    with open('state.json', 'w') as f:
+    with open(state_file_path, 'w') as f:
         print(state.to_json(), file=f)
